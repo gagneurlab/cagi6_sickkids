@@ -6,4 +6,4 @@ The team members are: [Julien Gagneur](https://github.com/gagneur), [Christian M
 
 This is the code repository used to generate the results for our two submissions for the [CAGI 6 Sickkids challenge](https://genomeinterpretation.org/cagi6-sickkids.html). We tackeled the challenge by predicting the molecular events underlying disease from a patient’s genome and transcriptome using variant annotation, aberrant gene expression events, and human phenotype ontology.
 
-The code will be made available to the public as soon as the challenge is closed/finished. The reviewers of the challenge can get access to the code at any time on request.
+The code will be made available to the public as soon as the challenge is closed/finished. The reviewers of the challenge can get access to the code upon request.
