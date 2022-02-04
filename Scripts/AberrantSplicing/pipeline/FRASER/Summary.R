@@ -1,0 +1,129 @@
+#'---
+#' title: "FRASER Summary: `r paste(snakemake@wildcards$dataset, snakemake@wildcards$annotation, sep = '--')`"
+#' author: mumichae, vyepez, ischeller
+#' wb:
+#'  log:
+#'    - snakemake: '`sm str(tmp_dir / "AS" / "{dataset}--{annotation}" / "FRASER_summary.Rds")`'
+#'  params:
+#'   - setup: '`sm cfg.AS.getWorkdir() + "/config.R"`'
+#'  input:
+#'   - fdsin: '`sm cfg.getProcessedResultsDir() + 
+#'                 "/aberrant_splicing/datasets/savedObjects/{dataset}--{annotation}/fds-object.RDS"`'
+#'   - results: '`sm cfg.getProcessedResultsDir() + 
+#'                   "/aberrant_splicing/results/{annotation}/fraser/{dataset}/results_per_junction.tsv"`'
+#'   - resultTableGene: '`sm cfg.getProcessedResultsDir() +
+#'                          "/aberrant_splicing/results/{annotation}/fraser/{dataset}/results.tsv"`'
+#'  output:
+#'   - wBhtml: '`sm config["htmlOutputPath"] +
+#'               "/AberrantSplicing/{dataset}--{annotation}_summary.html"`'
+#'   - res_html: '`sm config["htmlOutputPath"] +
+#'               "/AberrantSplicing/FRASER_results_{dataset}--{annotation}.tsv"`'
+#'  type: noindex
+#'---
+
+saveRDS(snakemake, snakemake@log$snakemake)
+source(snakemake@params$setup, echo=FALSE)
+
+suppressPackageStartupMessages({
+  library(cowplot)
+})
+
+#+ input
+dataset    <- snakemake@wildcards$dataset
+annotation <- snakemake@wildcards$annotation
+
+fds <- loadFraserDataSet(file=snakemake@input$fdsin)
+
+#' Number of samples: `r nrow(colData(fds))`
+#' 
+#' Number of introns (psi5 or psi3): `r length(rowRanges(fds, type = "psi5"))`
+#' 
+#' Number of splice sites (theta): `r length(rowRanges(fds, type = "theta"))`
+
+# used for most plots
+dataset_title <- paste0("Dataset: ", dataset, "--", annotation)
+
+
+#' ## Hyperparameter optimization
+for(type in psiTypes){
+  g <- plotEncDimSearch(fds, type=type) 
+  if (!is.null(g)) {
+    g <- g + theme_cowplot(font_size = 16) + 
+      ggtitle(paste0("Q estimation, ", type))
+    print(g)
+  }
+}
+
+#' ## Aberrantly spliced genes per sample
+plotAberrantPerSample(fds, aggregate=TRUE, main=dataset_title) + 
+  theme_cowplot(font_size = 16) +
+  theme(legend.position = "top")
+
+#' ## Batch Correlation: Samples x samples
+topN <- 3000
+topJ <- 1000
+# for(type in psiTypes){
+#   before <- plotCountCorHeatmap(
+#     fds,
+#     type = type,
+#     logit = TRUE,
+#     topN = topN,
+#     topJ = topJ,
+#     plotType = "sampleCorrelation",
+#     normalized = FALSE,
+#     annotation_col = NA,
+#     annotation_row = NA,
+#     sampleCluster = NA,
+#     plotMeanPsi=FALSE,
+#     plotCov = FALSE,
+#     annotation_legend = TRUE
+#   )
+#   before
+#   after <- plotCountCorHeatmap(
+#     fds,
+#     type = type,
+#     logit = TRUE,
+#     topN = topN,
+#     topJ = topJ,
+#     plotType = "sampleCorrelation",
+#     normalized = TRUE,
+#     annotation_col = NA,
+#     annotation_row = NA,
+#     sampleCluster = NA,
+#     plotMeanPsi=FALSE,
+#     plotCov = FALSE,
+#     annotation_legend = TRUE
+#   )
+#   after
+# }
+
+#' ## Results
+res <- fread(snakemake@input$results)
+res_gene <- fread(snakemake@input$resultTableGene)
+file <- snakemake@output$res_html
+write_tsv(res, file = file)
+#+ echo=FALSE, results='asis'
+cat(paste0("<a href='./", basename(file), "'>Download FRASER results table</a>"))
+
+# round numbers
+if(nrow(res) > 0){
+  res[, pValue := signif(pValue, 3)]
+  res[, padjust := signif(padjust, 3)]
+  res[, deltaPsi := signif(deltaPsi, 2)]
+  res[, psiValue := signif(psiValue, 2)]
+  # res[, pValueGene := signif(pValueGene, 2)]
+  # res[, padjustGene := signif(padjustGene, 2)]
+}
+
+DT::datatable(res,
+  caption = 'FRASER results per junction',
+  options=list(scrollX=TRUE),
+  escape=FALSE, filter = 'top')
+
+cols_first <- c('sampleID', 'hgncSymbol', 'type', 'padjust', 'deltaPsi', 'genomicLocation', 'HPO_id_overlap', 'HPO_label_overlap')
+res_gene <- cbind(res_gene[, ..cols_first], res_gene[, -cols_first, with = F])
+res_gene[, c('rho_theta', 'rho_psi5', 'rho_psi3', 'rho_filtered', 'blacklist', 'zScore') := NULL]
+DT::datatable(res_gene,
+              caption = 'FRASER results per gene',
+              options=list(scrollX=TRUE),
+              escape=FALSE, filter = 'top')

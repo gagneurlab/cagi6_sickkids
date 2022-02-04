@@ -1,0 +1,64 @@
+projectTitle: CAGI6 Sickkids
+htmlOutputPath: HTML_ouput
+indexWithFolderName: true
+root: Data/project_data
+
+sampleAnnotation: Data/project_data/sample_annotation.tsv
+geneAnnotation:
+  gencode29: Data/project_data/raw/external/gencode.v29lift37.annotation.gtf.gz
+  cagi6: Data/project_data/raw/genome_files/Homo_sapiens.GRCh37.87_spikein.gtf
+
+genomeAssembly: hs37d5
+genome: Data/project_data/raw/genome_files/hs37d5_spikein.fa
+hpoFile: Data/project_data/raw/external/drop_resources_for_analysis/hpo_genes.tsv.gz
+
+random_seed: true
+
+exportCounts:
+  geneAnnotations:
+  excludeGroups:
+
+aberrantExpression:
+  run: true
+  groups:
+  - all
+  fpkmCutoff: 1
+  implementation: autoencoder
+  padjCutoff: .1
+  zScoreCutoff: 0
+  maxTestedDimensionProportion: 3
+
+aberrantSplicing:
+  run: true
+  groups:
+  - all
+  recount: true
+  longRead: false
+  keepNonStandardChrs: false
+  filter: true
+  minExpressionInOneSample: 20
+  minDeltaPsi: 0
+  implementation: PCA
+  padjCutoff: 0.1
+  zScoreCutoff: 0
+  deltaPsiCutoff: 0.3
+  maxTestedDimensionProportion: 6
+
+mae:
+  run: true
+  groups:
+  - mae
+  gatkIgnoreHeaderCheck: true
+  padjCutoff: 0.05
+  allelicRatioCutoff: 0.8
+  addAF: true
+  maxAF: 0.005
+  maxVarFreqCohort: 0.055 # Allow at most 4 samples to have the variant
+  qcVcf: Data/project_data/raw/external/drop_resources_for_analysis/qc_vcf_1000G.vcf.gz
+  qcGroups:
+  - mae
+  
+tools:
+  gatkCmd: gatk
+  bcftoolsCmd: bcftools
+  samtoolsCmd: samtools

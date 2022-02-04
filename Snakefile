@@ -1,0 +1,67 @@
+from pathlib import Path
+import os
+import drop
+import wbuild
+from wbuild.createIndex import ci
+
+configfile: "config.yaml"
+
+projectDir = Path.cwd().resolve()
+drop.checkDropVersion(projectDir)
+_, projectPaths = drop.setupPaths(projectDir)
+tmp_dir = projectPaths["tmpDir"]
+
+cfg = drop.config.DropConfig(wbuild.utils.Config(), projectDir)
+drop.installRPackages(cfg)
+sa = cfg.sampleAnnotation
+config = cfg.config_dict # legacy
+
+
+include: cfg.AE.getSnakefile()
+include: cfg.AS.getSnakefile()
+include: cfg.MAE.getSnakefile()
+include: drop.utils.getWBuildSnakefile()
+
+
+# don't allow the dataset wildcard to contain '--' as this is a delimiter
+wildcard_constraints:
+    dataset="((?!--).)*"
+
+rule all:
+    input:
+        rules.aberrantExpression.output,
+        rules.aberrantSplicing.output,
+        rules.mae.output,
+        rules.Index.output,
+        dep_graph = cfg.get("htmlOutputPath") + "/dependency.done"
+    shell:
+        """
+        rm {input.dep_graph}
+        """
+
+rule sampleAnnotation:
+    input: rules.Pipeline_SampleAnnotation_R.output
+
+rule exportCounts:
+    input:
+        cfg.exportCounts.getExportCountFiles("geneCounts"),
+        cfg.exportCounts.getExportCountFiles("splicingCounts", expandPattern="k_{type}_counts", type=["j", "theta"]),
+        cfg.exportCounts.getExportCountFiles("splicingCounts", expandPattern="n_{type}_counts", type=["psi5", "psi3", "theta"]),
+    output:
+        sampleAnnotations = cfg.exportCounts.getFiles("sampleAnnotation.tsv"),
+        descriptions = cfg.exportCounts.getFiles("DESCRIPTION.txt"),
+    params:
+        dropConfig = cfg,
+        sampleAnnotation = sa
+    script: "Scripts/Pipeline/exportCountsMeta.py"
+
+rule dependencyGraph:
+    input:
+        rules.aberrantExpression_dependency.output,
+        rules.aberrantSplicing_dependency.output,
+        rules.mae_dependency.output
+    output: touch(cfg.get("htmlOutputPath") + "/dependency.done")
+    priority: 1
+
+rule publish_local:
+    shell: "rsync -Ort {config[htmlOutputPath]} {config[webDir]}"

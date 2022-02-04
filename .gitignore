@@ -1,0 +1,10 @@
+.snakemake/
+.drop/tmp
+__pycache__*
+.ipynb_checkpoints/
+slurm-*.out
+.Rproj.user
+*.Rproj
+.Rhistory
+hg19*
+README.html

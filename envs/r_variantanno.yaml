@@ -1,0 +1,10 @@
+channels:
+    - conda-forge
+    - bioconda
+
+dependencies:
+    - r>=4
+    - r-data.table
+    - bioconductor-variantannotation
+    - bioconductor-ensemblvep
+    - bioconductor-genomicfiles

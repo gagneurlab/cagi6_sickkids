@@ -1,0 +1,11 @@
+channels:
+    - conda-forge
+    - bioconda
+
+dependencies:
+    - r>=4
+    - r-data.table
+    - r-r.utils
+    - bioconductor-biocparallel
+    - bioconductor-genomeinfodb
+    - r-magrittr
